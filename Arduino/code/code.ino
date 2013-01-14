@@ -1,13 +1,13 @@
 #include <aJSON.h>
 #include <LiquidCrystal.h>
 #include <Keypad.h>
+#include <String.h>
 
-/*** PIN SETUP ***/
+/* PIN SETUP */
 #define trigPin 48
 #define echoPin 50
-#define ledPin 13
 
-/*** KEYPAD SETUP ***/
+/* KEYPAD SETUP */
 const byte ROWS = 4; //four rows
 const byte COLS = 3; //three columns
 char keys[ROWS][COLS] = {
@@ -20,120 +20,28 @@ byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
 byte colPins[COLS] = {8, 7, 6}; //connect to the column pinouts of the keypad
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
-boolean inStock = false;
-String str = "";
+/* LCD SETUP */
+LiquidCrystal lcd(22, 24, 26, 28, 30, 32);
+char *defaultMsg = "Enter code";
 
-/*** SERIAL JSON STREAM SETUP ***/
+
+/* SERIAL JSON STREAM SETUP */
 aJsonStream serial_stream(&Serial);
 
-/*** LCD SETUP ***/
-LiquidCrystal lcd(22, 24, 26, 28, 30, 32);
-
 void setup() {
-  digitalWrite(ledPin, HIGH);
   Serial.begin(9600);
   Serial.println();
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);  
   lcd.begin(16, 2);
+  resetKeyInput();
 }
 
 void loop() {
   char key = kpd.getKey();
-  if(key == '*') { // Check for a valid key.
-    str = "";
-  } else if (key == '#' && inStock) {
-    int id = str.toInt();
-    int result = vendStock(id);
-    inStock = false;
-    Serial.println("Vending");
-    
-  } else if (key == '#') {
-    int id = str.toInt();
-    if (checkId(id)) {
-      int stock = getStock(id);
-      switch (stock) {
-        case -1: inStock = false; break;
-        case 0: inStock = false; break;
-        default: inStock = true; Serial.println("In stock");
-      }
-    }
+  if (key) {
+    handleKey(key);
   }
-  
-  else if (key) {
-    str += key;
-    Serial.println(str);
-  }
-  
-}
-
-/*** SERIAL ***/
-void serialEvent() {
-    serial_stream.skip(); // Skip any whitespace
-  
-  if (serial_stream.available()) {
-    handleJson(); // We have something, let's handle it
-  }
-}
-
-/** handleJson
- *  handles the incoming json from serial port
- */
-void handleJson() {
-  aJsonObject *msg = aJson.parse(&serial_stream);
-  if (!msg) {
-    Serial.println('{"err":"Invalid JSON"}');
-    return;
-  }
-  
-  aJsonObject *cmd = aJson.getObjectItem(msg, "cmd");
-  aJsonObject *id = aJson.getObjectItem(msg, "id");
-  
-  if (!cmd) { // no command
-    aJson.addStringToObject(msg, "err", "No command");
-  }
-  
-  else if (!id) { // no id 
-    aJson.addStringToObject(msg, "err", "No id");
-  }
-  
-  else if (strcmp(cmd->valuestring, "stock") == 0) { // stock command
-    int result = getStock(id->valueint);
-    switch (result) {
-      case -1: aJson.addStringToObject(msg, "err", "Id does not exist");
-               break;
-      default: aJson.addNumberToObject(msg, "res", result);
-               lcd.clear();
-               lcd.print(result);
-               lcd.print(" items left. Press # to vend");
-    }
-  }
-  
-  else if (strcmp(cmd->valuestring, "vend") == 0) { // vend command
-    int result = getStock(id->valueint);
-    switch (result) {
-      case -1: aJson.addStringToObject(msg, "err", "Id does not exist");
-                lcd.clear();
-                lcd.print("Id does not exist");
-                
-                break;
-      case 0: aJson.addStringToObject(msg, "err", "Out of stock");
-                lcd.clear();
-                lcd.print("Out of stock");
-                Serial.println("Out of Stock");
-               break;
-      default: aJson.addStringToObject(msg, "res", "Success");
-                lcd.clear();
-                lcd.print("Success");
-    }
-  }
-  
-  else { // command not recognized
-    aJson.addStringToObject(msg, "err", "Command not recognized");
-  }
-  
-  aJson.print(msg, &serial_stream);
-  Serial.println();
 }
 
 /*** RANGE FINDER ***/
@@ -152,22 +60,11 @@ long getDistance() {
   return (duration/2) / 29.1;
 }
 
-
-/*** VENDING***/
-
-boolean checkId(int id) {
-  if (id == 1 || id == 2) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-/** getStock
+/** getQuantity
  *  get quantiy of stock for given id
  *  return quanity or -1 if invalid id
  */
-int getStock(int id) {
+int getQuantity(int id) {
   if (!checkId(id)) {
     return -1;
   }
@@ -177,20 +74,29 @@ int getStock(int id) {
   } else {
     return 0;
   }
-  
-  /*switch (id) { // TODO implement stock checking
-    case 1: return 2;
-    case 2: return 0;
-    default: return -1; // id not recognized
-  }*/
 }
+
+/*** UTIL ***/
+
+/** checkId
+ *  returns true if id is valid, false otherwise
+ */
+boolean checkId(int id) {
+  if (id == 1 || id == 2) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/*** MOTOR ***/
 
 /** vendStock
  *  vends the item
  *  return 1 if sucessfull, 0 if out of stock, -1 if invalid id
  */
 int vendStock(int id) {
-  int stock = getStock(id);
+  int stock = getQuantity(id);
   if (stock < 1) {
     return stock;
   } else {
@@ -201,12 +107,141 @@ int vendStock(int id) {
 
 /*** LCD ***/
 
+/** lcdRefreshString
+ *  this method clears the screen, resets cursor
+ *  to beginning and writes a new string to the
+ *  LCD
+ */
 void lcdRefreshString(char *s) {
   lcd.clear();
   lcd.setCursor(0,1);
   lcd.write(s);
 }
 
-void lcdPrintChar() {
+/** lcdDisplayMessage
+ *  Displays message on LCD for 4 seconds
+ */
+void lcdDisplayMessage(char *s) {
+  lcdRefreshString(s);
+  delay(4000);
+}
+
+/*** KEYPAD ***/
+
+boolean readyToVend;
+char str[10];
+int strIndex;
+
+void resetKeyInput() {
+  str[0] = 0;
+  strIndex = 0;
+  readyToVend = false;
+  lcdRefreshString(defaultMsg);
+}
+
+/** handleKey
+ *  If key is '*' resets the state
+ *  If key is '#' it checks stock, if in
+ *  If in stock another '#' dispense it
+ *  Any number is added to an array for
+ *  future use
+ */
+void handleKey(char key) {
+  switch (key) {
+    case '*': resetKeyInput();
+              break;
+    
+    case '#': {int id = atoi(str);
+              if (readyToVend) {
+                int result = vendStock(id);
+                switch (result) {
+                  case -1: lcdDisplayMessage("Invalid ID"); break;
+                  case  0: lcdDisplayMessage("Out of stock"); break;
+                  default: lcdDisplayMessage("Thank You");
+                }
+                resetKeyInput();
+              }
+              
+              else {
+                int result = getQuantity(id);
+                switch (result) {
+                  case -1: lcdDisplayMessage("Invalid ID");
+                           resetKeyInput();
+                           break;
+                  case  0: lcdDisplayMessage("Out of Stock");
+                           resetKeyInput();
+                           break;
+                  default: lcdRefreshString("Press # to vend");
+                           readyToVend = true;
+                }
+              }
+              break;}
+              
+    default : str[strIndex++] = key;
+              str[strIndex] = 0;
+              lcdRefreshString(str);
+  }
+}
+
+/*** SERIAL ***/
+
+/** serialEvent()
+ *  this method is called after loop() whenever there is input
+ *  to the serial port. It filters out any preceding white space
+ *  calls handleJson() if there is data to be parsed.
+ */
+void serialEvent() {
+  serial_stream.skip(); // Skip any whitespace
+  if (serial_stream.available()) {
+    handleJson(); // We have something, let's handle it
+  }
+}
+
+/** handleJson
+ *  parses the incoming JSON from serial port and acts accordingly
+ */
+void handleJson() {
+  aJsonObject *msg = aJson.parse(&serial_stream);
+  if (!msg) { // Message failed to parse
+    Serial.println('{"err":"Invalid JSON"}');
+    return;
+  }
   
+  aJsonObject *cmd = aJson.getObjectItem(msg, "cmd");
+  aJsonObject *id = aJson.getObjectItem(msg, "id");
+  
+  if (!cmd) { // no command
+    aJson.addStringToObject(msg, "err", "No command");
+  }
+  
+  else if (!id) { // no id 
+    aJson.addStringToObject(msg, "err", "No id");
+  }
+  
+  else if (strcmp(cmd->valuestring, "stock") == 0) { // stock command
+    int result = getQuantity(id->valueint);
+    switch (result) {
+      case -1: aJson.addStringToObject(msg, "err", "Id does not exist");
+               break;
+      default: aJson.addNumberToObject(msg, "res", result);
+    }
+  }
+  
+  else if (strcmp(cmd->valuestring, "vend") == 0) { // vend command
+    int result = getQuantity(id->valueint);
+    switch (result) {
+      case -1: aJson.addStringToObject(msg, "err", "Id does not exist");
+                break;
+      case  0: aJson.addStringToObject(msg, "err", "Out of stock");
+               break;
+      default: aJson.addStringToObject(msg, "res", "Success");
+    }
+  }
+  
+  else { // command not recognized
+    aJson.addStringToObject(msg, "err", "Command not recognized");
+  }
+  
+  aJson.print(msg, &serial_stream);
+  Serial.println(); // finish serial write with CRLF
 }
