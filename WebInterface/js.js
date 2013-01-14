@@ -4,6 +4,7 @@ var msg_error = "invalid code";
 var msg_instock = "Press # to vend";
 var msg_outofstock = "out of stock";
 var msg_thanks = "Thank you";
+var id;
 
 $(document).ready(function($){
     window.scrollTo(0, 1);
@@ -28,24 +29,51 @@ $('.cancel').click(function() {
 $('.submit').click(function() {
 	var displaytext = $('#display').html();
 	
-	if(displaytext == "0001")
-		setDisplay(msg_instock);
-		
-	else if(displaytext == "0002")
-		setDisplay(msg_outofstock);
-		
-	else if(displaytext == msg_instock){
-		setDisplay(msg_success);
-		setTimeout(function(){setDisplay(msg_thanks)},3000);	
+	if (displaytext == msg_instock) {
+		$.getJSON('vend', {id: id}, function(data) {
+			if ('err' in data) {
+				setDisplay(data['err']);
+			}
+			
+			else if ('res' in data) {
+				setDisplay(msg_success);
+				setTimeout(function(){setDisplay(msg_thanks)},3000);	
+			}
+		});	
 	}
 		
-	else if (displaytext == msg_outofstock)
+	else if (displaytext == msg_outofstock) {
 		setDisplay(msg_outofstock);
+	}
 		
-	else
-		setDisplay(msg_error);
+	else {
+		id = parseInt(displaytext);
+
+		$.getJSON('stock', {id: id}, function(data) {
+			if ('err' in data) {
+				setDisplay(data['err']);
+			}
+			
+			else if ('res' in data) {
+				switch (data['res']) {
+					case 0: setDisplay(msg_outofstock); break;
+					default: 
+						var msg = data['res'] + ' left: ' + msg_instock;
+						setDisplay(msg);
+				}	
+			}
+		});			
+	}
+	
+	// if(displaytext == "0001")
+		// setDisplay(msg_instock);
 		
-	$('html, body').animate({scrollTop:displaypos}, 'slow');
+	// else if(displaytext == "0002")
+		// setDisplay(msg_outofstock);
+		
+	// else 
+		
+	// $('html, body').animate({scrollTop:displaypos}, 'slow');
 	
 });
     
