@@ -1,9 +1,9 @@
-var msg_welcome = "select product";
+var msg_welcome = "select products";
 var msg_success = "vending product";
 var msg_error = "invalid code";
-var msg_instock = "Press # to vend";
+var msg_instock = "press # to vend";
 var msg_outofstock = "out of stock";
-var msg_thanks = "Thank you";
+var msg_thanks = "thank you";
 var id;
 
 $(document).ready(function($){
@@ -11,14 +11,18 @@ $(document).ready(function($){
 	clearDisplay();    
     setDisplay(msg_welcome);
     
-var displaypos = $('#display').offset().top;
+var displaypos = $('#displaymsg').offset().top;
 	
 
+/* [*] key */
 $('.cancel').click(function() {
-	var displaytext = $('#display').html();
+	var displaytext = $('#displaymsg').html();
 	
+	//clear any messages
 	if(!isDisplayNumeric(displaytext))
 		clearDisplay();
+		
+	//remove last digit	
 	else{
 		var newdisplaytext = displaytext.substring(0, displaytext.length - 1);
 		setDisplay(newdisplaytext);
@@ -26,8 +30,9 @@ $('.cancel').click(function() {
 
 });
 
+/* [#] key */
 $('.submit').click(function() {
-	var displaytext = $('#display').html();
+	var displaytext = $('#displaymsg').html();
 	
 	if (displaytext == msg_instock) {
 		$.getJSON('vend', {id: id}, function(data) {
@@ -42,10 +47,9 @@ $('.submit').click(function() {
 		});	
 	}
 		
-	else if (displaytext == msg_outofstock) {
-		setDisplay(msg_outofstock);
-	}
-		
+	else if (displaytext == msg_outofstock);
+	
+	//request stock
 	else {
 		id = parseInt(displaytext);
 
@@ -65,22 +69,13 @@ $('.submit').click(function() {
 		});			
 	}
 	
-	// if(displaytext == "0001")
-		// setDisplay(msg_instock);
-		
-	// else if(displaytext == "0002")
-		// setDisplay(msg_outofstock);
-		
-	// else 
-		
-	// $('html, body').animate({scrollTop:displaypos}, 'slow');
 	
 });
     
 $('.key').click(function() {
 
        var key = $(this).attr("value");
-       var displaytext = $('#display').html();
+       var displaytext = $('#displaymsg').html();
        
        
 
@@ -111,15 +106,15 @@ window.addEventListener('load', function() {
 /* Functions */
 
 function setDisplay(string){
-	$('#display').html(string);
+	$('#displaymsg').html(string);
 }
 
 function appendDisplay(string){
-	$('#display').append(string);
+	$('#displaymsg').append(string);
 }
 
 function clearDisplay(){
-	$('#display').html("");
+	$('#displaymsg').html("");
 }
 
 function isDisplayNumeric(input){
@@ -129,5 +124,5 @@ var b = ((input - 0) == input && input.length <= 4);
 }
 
 function displayLength(){
-	return $('#display').html().length;
+	return $('#displaymsg').html().length;
 }

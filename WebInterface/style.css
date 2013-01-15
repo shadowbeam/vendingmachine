@@ -254,13 +254,18 @@ margin-right: auto;
 		color: rgba(255, 255, 254, 0.25);
 	}
 	
+	
+	#displaymsg{
+		max-height: 1em;
+	}
+	
 	#display{
+	overflow: scroll;
 		max-height: 3em;
 		height: 1em;
 		text-align: left;
 		padding: 0.5em;
 		font: 30px "Courier New", Courier, mono;
-		overflow: hidden;
 		color: rgb(0, 74, 89);
 		text-shadow: 0 0 8px #a4e2e2;
 		
