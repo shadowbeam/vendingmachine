@@ -4,10 +4,10 @@
 #include <Arduino.h>
 
 
-class Stock
+class StockController
 {
   public:
-    Stock(int trigPin, int echoPin);
+    StockController(int trigPin, int echoPin);
     int getStock();
     boolean isEmpty();
   private:

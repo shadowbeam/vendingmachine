@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#include <Stock.h>
+#include <StockController.h>
 
-Stock::Stock(int trigPin, int echoPin)
+StockController::StockController(int trigPin, int echoPin)
 {
 	_trigPin = trigPin;
 	_echoPin = echoPin;
@@ -9,18 +9,18 @@ Stock::Stock(int trigPin, int echoPin)
 	pinMode(echoPin, OUTPUT);
 }
 
-int Stock::getStock()
+int StockController::getStock()
 {
 	int cm = _getDistance();
 	return 5 - (cm / 2);
 }
 
-boolean Stock::isEmpty()
+boolean StockController::isEmpty()
 {
 	return getStock() == 0;
 }
 
-int Stock::_getDistance()
+int StockController::_getDistance()
 {
   long duration;
   digitalWrite(_trigPin, LOW);
