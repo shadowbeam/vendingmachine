@@ -12,7 +12,7 @@ class Stock
     boolean isEmpty();
   private:
     int _trigPin;
-	int _echoPinl;
+	int _echoPin;
     int _getDistance();
 };
 

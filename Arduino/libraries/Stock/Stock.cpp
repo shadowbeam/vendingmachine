@@ -17,17 +17,17 @@ int Stock::getStock()
 
 boolean Stock::isEmpty()
 {
-	return getStock == 0;
+	return getStock() == 0;
 }
 
 int Stock::_getDistance()
 {
   long duration;
-  digitalWrite(trigPin, LOW);
+  digitalWrite(_trigPin, LOW);
   delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(_trigPin, HIGH);
   delayMicroseconds(5);
-  digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH);
+  digitalWrite(_trigPin, LOW);
+  duration = pulseIn(_echoPin, HIGH);
   return duration / 2 / 29.39;
 }
