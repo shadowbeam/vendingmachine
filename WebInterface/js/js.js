@@ -4,6 +4,7 @@ var msg_error = "invalid code";
 var msg_instock = "press # to vend";
 var msg_outofstock = "out of stock";
 var msg_thanks = "thank you";
+var credit_code = 99; //number to increase your credit
 var id;
 
 $(document).ready(function($){
@@ -33,6 +34,17 @@ $('.cancel').click(function() {
 /* [#] key */
 $('.submit').click(function() {
 	var displaytext = $('#displaymsg').html();
+	
+	//if the user wants to increase their credit
+	if(displaytext == credit_code){	
+		$.getJSON('addcredit', {id: id}, function(data) {
+			if ('res' in data) {
+				setDisplay(data['res']);	
+			}
+		});
+	}
+	
+
 	
 	if (displaytext == msg_instock) {
 		$.getJSON('vend', {id: id}, function(data) {
