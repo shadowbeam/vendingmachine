@@ -49,6 +49,12 @@ void loop() {
 
 /*** KEYPAD INTERUPT ***/
 
+int  milliseconds;
+char key;
+int id;
+char str[10];
+int strIndex;
+
 /** keyInterupt
  *  If key is '*' resets the state
  *  If key is '#' it checks stock, if in
@@ -57,64 +63,62 @@ void loop() {
  *  future use
  */
 void keyInterupt() {
-  int ms = 0;
-  char key;
-  char str[10];
-  int strIndex = 0;
+  milliseconds = 0;
+  str[0] = 0;
+  strIndex = 0;
   
-  while (ms < 4000) { // wait 4 secs for input
+  while (milliseconds < 4000) { // wait 4 secs for input
     key = kpd.getKey();
-    
+    id = atoi(str);
+  
     if (!key) {
-      ms += 10;
+      milliseconds += 10;
       delay(10);
     }
     
-    else if (key == '*') {
-      return; // clear input
+    if (key == '*') {
+      break;
+    }
+  
+    if (key == '#' && !validId(id)) {
+      lcdWritelnAndBlock("Invalid Id", 4);
+      break;
     }
     
-    else if (key == '#') {
-      int id = atoi(str);
-      
-      if (!validId(id)) {
-        lcdWriteln("Invalid Id");
-      }
-      
-      else if (coils[id - 1].isEmpty()) {
-        lcdWriteln("Out of stock");
-      }
-      
-      else { // ready to vend
-        ms = 0;
-        lcdWriteln("Press # to vend");
-        
-        while (ms < 4000) { // inner loop wait for second #
-          ms += 10;
-          delay(10);
-          key = kpd.getKey();
-          if (key && key == '#') {
-            coils[id - 1].vend();
-            lcdWriteln("Vending product");
-            delay(4000);
-            lcdWriteln("Thank you");
-            break; // break inner loop
-          }
-        } // end inner loop
-        
-      }
+    if (key == '#' && validId(id) && coils[id-1].isEmpty()) {
+      lcdWritelnAndBlock("Out of stock", 4);
       break;
-    } 
+    }
     
-    else { // add number to string
+    if (key == '#' && validId(id) && !coils[id-1].isEmpty()) {
+      confirmVend();
+      break;
+    }
+    
+    if (isdigit(key)) { // add number to string
       str[strIndex++] = key;
       str[strIndex] = 0;
       lcdWriteln(str);
-      ms = 0;
+      milliseconds= 0;
     }
-   
   }
-  delay(4000); // show final message for 4 seconds
+}
+
+void confirmVend() {
+  lcdWriteln("Press # to vend");
+  milliseconds = 0;
+  
+  while ( milliseconds < 4000) {
+    milliseconds += 10;
+    delay(10);
+    key = kpd.getKey();
+    if (key && key == '#') {
+      coils[id - 1].vend();
+      lcdWritelnAndBlock("Vending product", 4);
+      lcdWritelnAndBlock("Thank you", 4);
+      break;
+    }
+  }
 }
 
 /*** SERIAL ***/
@@ -192,7 +196,6 @@ void setCredit(int credit) {
   credit >>= 8;
 }
 
-
 /** checkId
  *  returns true if id is valid, false otherwise
  */
@@ -211,3 +214,9 @@ void lcdWriteln(char *s) {
   lcd.setCursor(0,1);
   lcd.write(s);
 }
+
+void lcdWritelnAndBlock(char *str, int secs) {
+  lcdWriteln(str);
+  delay(1000 * secs);
+}
+
