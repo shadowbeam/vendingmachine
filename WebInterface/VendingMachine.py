@@ -20,6 +20,11 @@ class VendingMachine(object):
 		return self.arduino(cmd)
 	vend.exposed = True
 	
+	def addcredit(self, id=None):
+		cmd = json.dumps({'cmd':'addcredit', 'id':int(id)})
+		return self.arduino(cmd)
+	addcredit.exposed = True
+	
 	def arduino(self, cmd):
 		ser = serial.Serial('COM3', timeout=5)
 		ser.readline()
