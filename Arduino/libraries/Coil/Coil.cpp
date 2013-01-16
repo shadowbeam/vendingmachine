@@ -2,13 +2,19 @@
 #include <Coil.h>
 
 
-Coil::Coil(int trigPin, int echoPin, int motorPin)
+Coil::Coil(int trigPin, int echoPin, int motorPin, int price)
 {
 	pinMode(trigPin, OUTPUT);
 	pinMode(echoPin, INPUT); 
 	_trigPin = trigPin;
 	_echoPin = echoPin;
 	_motorPin = motorPin;
+  _price = price;
+}
+
+int Coil::getPrice()
+{
+	return _price;
 }
 
 int Coil::getStock()

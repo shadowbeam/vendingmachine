@@ -6,8 +6,8 @@
 
 /* Coil SETUP */
 Coil coils[] = {
-  Coil(1,2,3),
-  Coil(4,5,6)
+  Coil(1,2,3,100),
+  Coil(4,5,6,80)
 };
 
 /* KEYPAD SETUP */
