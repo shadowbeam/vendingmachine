@@ -1,5 +1,5 @@
-#ifndef Stock_h
-#define Stock_h
+#ifndef StockController_h
+#define StockController_h
 
 #include <Arduino.h>
 
