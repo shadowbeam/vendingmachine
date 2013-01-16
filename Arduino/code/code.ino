@@ -58,7 +58,7 @@ int strIndex;
 /** keyInterupt
  *  If key is '*' resets the state
  *  If key is '#' it checks stock, if in
- *  If in stock another '#' dispense it
+ *  If in stock another '#' dispenses it
  *  Any number is added to an array for
  *  future use
  */
@@ -67,11 +67,11 @@ void keyInterupt() {
   str[0] = 0;
   strIndex = 0;
   
-  while (milliseconds < 4000) { // wait 4 secs for input
+  while (milliseconds < 4000) { // wait 4 secs for additional input
     key = kpd.getKey();
     id = atoi(str);
   
-    if (!key) {
+    if (!key) { // no key pressed, increment time
       milliseconds += 10;
       delay(10);
     }
@@ -81,12 +81,12 @@ void keyInterupt() {
     }
   
     if (key == '#' && !validId(id)) {
-      lcdWritelnAndBlock("Invalid Id", 4);
+      lcdPrintlnAndBlock("Invalid Id", 4);
       break;
     }
     
     if (key == '#' && validId(id) && coils[id-1].isEmpty()) {
-      lcdWritelnAndBlock("Out of stock", 4);
+      lcdPrintlnAndBlock("Out of stock", 4);
       break;
     }
     
@@ -98,14 +98,18 @@ void keyInterupt() {
     if (isdigit(key)) { // add number to string
       str[strIndex++] = key;
       str[strIndex] = 0;
-      lcdWriteln(str);
+      lcdPrintln(str);
       milliseconds= 0;
     }
   }
 }
 
+/** confirmVend
+ *  loops until # is pressed and vend completes or
+ *  four seconds elapse
+ */
 void confirmVend() {
-  lcdWriteln("Press # to vend");
+  lcdPrintln("Press # to vend");
   milliseconds = 0;
   
   while ( milliseconds < 4000) {
@@ -114,8 +118,8 @@ void confirmVend() {
     key = kpd.getKey();
     if (key && key == '#') {
       coils[id - 1].vend();
-      lcdWritelnAndBlock("Vending product", 4);
-      lcdWritelnAndBlock("Thank you", 4);
+      lcdPrintlnAndBlock("Vending product", 4);
+      lcdPrintlnAndBlock("Thank you", 4);
       break;
     }
   }
@@ -159,7 +163,7 @@ void serialEvent() {
     }
     
     else if (strcmp(cmd, "vend") == 0) { // vend command
-    if (coils[id - 1].vend()) {
+      if (coils[id - 1].vend()) {
         aJson.addTrueToObject(msg, "res");
       } else {
         aJson.addFalseToObject(msg, "res");
@@ -177,6 +181,9 @@ void serialEvent() {
 
 /*** UTIL ***/
 
+/** getCredit
+ *  retrieves the stored credit from EEPROM
+ */
 int getCredit() {
   int credit = 0;
   credit = (credit << 8) + EEPROM.read(eepromLoc[0]);
@@ -185,6 +192,9 @@ int getCredit() {
   credit = (credit << 8) + EEPROM.read(eepromLoc[3]);
 }
 
+/** getCredit
+ *  sets the stored credit in EEPROM
+ */
 void setCredit(int credit) {
   EEPROM.write(eepromLoc[3], credit & 0xFF);
   credit >>= 8;
@@ -193,30 +203,33 @@ void setCredit(int credit) {
   EEPROM.write(eepromLoc[1], credit & 0xFF);
   credit >>= 8;
   EEPROM.write(eepromLoc[0], credit & 0xFF);
-  credit >>= 8;
 }
 
 /** checkId
- *  returns true if id is valid, false otherwise
+ *  returns true if coil id is valid, false otherwise
  */
 boolean validId(int id) {
   int arraySize = sizeof(coils) / sizeof(coils[0]);
   return id >= 1 && id <= arraySize;
 }
 
-/** lcdRefreshString
+/** lcdPrintln
  *  this method clears the screen, resets cursor
  *  to beginning and writes a new string to the
  *  LCD
  */
-void lcdWriteln(char *s) {
+void lcdPrintln(char *s) {
   lcd.clear();
   lcd.setCursor(0,1);
   lcd.write(s);
 }
 
-void lcdWritelnAndBlock(char *str, int secs) {
-  lcdWriteln(str);
+/** lcdPrintlnAndBlock
+ *  as lcdPrintln with the addition of blockiing the program for
+ *  seconds specified in parameters
+ */
+void lcdPrintlnAndBlock(char *str, int secs) {
+  lcdPrintln(str);
   delay(1000 * secs);
 }
 
