@@ -1,5 +1,6 @@
 #include <aJSON.h>
 #include <Coil.h>
+#include <EEPROM.h>
 #include <LiquidCrystal.h>
 #include <Keypad.h>
 #include <String.h>
@@ -20,6 +21,7 @@ char keys[ROWS][COLS] = {
   {'*','0','#'}
 };
 byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
+// TODO CHANGE TO 21, 20, 19
 byte colPins[COLS] = {8, 7, 6}; //connect to the column pinouts of the keypad
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
@@ -29,10 +31,16 @@ LiquidCrystal lcd(22, 24, 26, 28, 30, 32);
 /* SERIAL JSON STREAM SETUP */
 aJsonStream serial_stream(&Serial);
 
+/* EEPROM LOCATION SETUP */
+int eepromLoc[] = {0x0A, 0x0B, 0x0C, 0x0D};
+
 void setup() {
   Serial.begin(9600);
   Serial.println();  
   lcd.begin(16, 2);
+  attachInterrupt(2, keyInterupt, CHANGE);
+  attachInterrupt(3, keyInterupt, CHANGE);
+  attachInterrupt(4, keyInterupt, CHANGE);
 }
 
 void loop() {
@@ -54,7 +62,7 @@ void keyInterupt() {
   char str[10];
   int strIndex = 0;
   
-  while (ms < 4000) {
+  while (ms < 4000) { // wait 4 secs for input
     key = kpd.getKey();
     
     if (!key) {
@@ -63,39 +71,42 @@ void keyInterupt() {
     }
     
     else if (key == '*') {
-      return;
+      return; // clear input
     }
     
     else if (key == '#') {
       int id = atoi(str);
+      
       if (!validId(id)) {
         lcdWriteln("Invalid Id");
-        break;
       }
       
       else if (coils[id - 1].isEmpty()) {
         lcdWriteln("Out of stock");
-        break;
       }
       
-      else {
+      else { // ready to vend
         ms = 0;
         lcdWriteln("Press # to vend");
-        while (ms < 4000) {
+        
+        while (ms < 4000) { // inner loop wait for second #
           ms += 10;
-          delay(1);
+          delay(10);
           key = kpd.getKey();
           if (key && key == '#') {
             coils[id - 1].vend();
             lcdWriteln("Vending product");
             delay(4000);
             lcdWriteln("Thank you");
+            break; // break inner loop
           }
-        }
+        } // end inner loop
+        
       }
-    }
+      break;
+    } 
     
-    else {
+    else { // add number to string
       str[strIndex++] = key;
       str[strIndex] = 0;
       lcdWriteln(str);
@@ -103,7 +114,7 @@ void keyInterupt() {
     }
    
   }
-  delay(4000);
+  delay(4000); // show final message for 4 seconds
 }
 
 /*** SERIAL ***/
@@ -139,7 +150,7 @@ void serialEvent() {
     if (coils[id - 1].isEmpty()) {
         aJson.addFalseToObject(msg, "res");
       } else {
-      aJson.addTrueToObject(msg, "res");
+        aJson.addTrueToObject(msg, "res");
       }
     }
     
@@ -147,7 +158,7 @@ void serialEvent() {
     if (coils[id - 1].vend()) {
         aJson.addTrueToObject(msg, "res");
       } else {
-      aJson.addFalseToObject(msg, "res");
+        aJson.addFalseToObject(msg, "res");
       }
     }
     
@@ -161,6 +172,26 @@ void serialEvent() {
 }
 
 /*** UTIL ***/
+
+int getCredit() {
+  int credit = 0;
+  credit = (credit << 8) + EEPROM.read(eepromLoc[0]);
+  credit = (credit << 8) + EEPROM.read(eepromLoc[1]);
+  credit = (credit << 8) + EEPROM.read(eepromLoc[2]);
+  credit = (credit << 8) + EEPROM.read(eepromLoc[3]);
+}
+
+void setCredit(int credit) {
+  EEPROM.write(eepromLoc[3], credit & 0xFF);
+  credit >>= 8;
+  EEPROM.write(eepromLoc[2], credit & 0xFF);
+  credit >>= 8;
+  EEPROM.write(eepromLoc[1], credit & 0xFF);
+  credit >>= 8;
+  EEPROM.write(eepromLoc[0], credit & 0xFF);
+  credit >>= 8;
+}
+
 
 /** checkId
  *  returns true if id is valid, false otherwise
