@@ -17,7 +17,7 @@ class Coil
     int _echoPin;
     int _motorPin;
     int _getDistance();
-    int _getPrice();
+    int _price;
 };
 
 #endif
