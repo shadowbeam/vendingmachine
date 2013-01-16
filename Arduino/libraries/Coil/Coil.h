@@ -1,18 +1,20 @@
-#ifndef StockController_h
-#define StockController_h
+#ifndef Coil_h
+#define Coil_h
 
 #include <Arduino.h>
 
 
-class StockController
+class Coil
 {
   public:
-    StockController(int trigPin, int echoPin);
-    int getStock();
+	Coil(int trigPin, int echoPin, int motorPin);
+	int getStock();
     boolean isEmpty();
+    boolean vend();
   private:
     int _trigPin;
 	int _echoPin;
+	int _motorPin;
     int _getDistance();
 };
 
