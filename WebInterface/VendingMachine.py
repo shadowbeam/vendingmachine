@@ -7,45 +7,39 @@ PATH = os.path.abspath(os.path.dirname(__file__))
 
 class VendingMachine(object):
 	def stock(self, id=None):
-		if (id == None):
-			return None
-		cmd = json.dumps({'cmd':'stock', 'id':int(id)})
-		return self.arduino(cmd)
+		return self.arduino('stock', id)
 	stock.exposed = True	
 	
 	def vend(self, id=None):
-		if (id == None):
-			return None
-		cmd = json.dumps({'cmd':'vend', 'id':int(id)})
-		return self.arduino(cmd)
+		return self.arduino('vend', id)
 	vend.exposed = True
 	
 	def addcredit(self, id=None):
-		cmd = json.dumps({'cmd':'addcredit', 'id':int(id)})
-		return self.arduino(cmd)
+		return self.arduino('addcredit', id)
 	addcredit.exposed = True
 	
-	def arduino(self, cmd):
-		ser = serial.Serial('COM3', timeout=5)
-		ser.readline()
-		ser.write(cmd)
-		response = ser.readline()
-		ser.close()
-		
-		if (response == ''):
-			print(cmd)
-			print(response)
-			return 'No response'
-
-		return response
+	def arduino(self, cmd, id):
+    try:
+      request = json.dumps({'cmd':cmd, 'id':int(id)})
+      ser = serial.Serial('COM3', timeout=5)
+      ser.readline()
+      ser.write(cmd)
+      response = ser.readline()
+      ser.close()
+      if (response == ''):
+        return '{"err":"Connection failed"}'
+      return response
+    except (TypeError, ValueError) as e:
+      return '("err":"Invalid id"}'
 	
+  
 cherrypy.tree.mount(VendingMachine(), '/', config={
-        '/': {
-                'tools.staticdir.on': True,
-                'tools.staticdir.dir': PATH,
-                'tools.staticdir.index': 'index.html',
-            },
-    })
-	
+    '/': {
+      'tools.staticdir.on': True,
+      'tools.staticdir.dir': PATH,
+      'tools.staticdir.index': 'index.html',
+    },
+})
+
 cherrypy.engine.start()
 cherrypy.engine.block()
