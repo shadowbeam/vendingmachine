@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Coil.h>
+#include <Servo.h>
 
 
 Coil::Coil(int trigPin, int echoPin, int motorPin, int price)
@@ -31,7 +32,16 @@ boolean Coil::isEmpty()
 boolean Coil::vend()
 {
 	if (!isEmpty()) {
-		// TODO MOTOR ACTION;
+		noInterrupts();
+    
+    Servo servo;
+    servo.attach(_motorPin);
+    servo.write(0);
+    delay(1350);
+    servo.write(90);
+    delete &servo;
+    
+    interrupts();
 		return true;
 	}
 	return false;
@@ -39,6 +49,8 @@ boolean Coil::vend()
 
 int Coil::_getDistance()
 {
+  noInterrupts();
+  
 	long duration;
 	digitalWrite(_trigPin, LOW);
 	delayMicroseconds(2);
@@ -47,4 +59,6 @@ int Coil::_getDistance()
 	digitalWrite(_trigPin, LOW);
 	duration = pulseIn(_echoPin, HIGH);
 	return duration / 2 / 29.39;
+  
+  interrupts();
 }
