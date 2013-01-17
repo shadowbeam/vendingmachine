@@ -38,16 +38,16 @@ void setup() {
   Serial.begin(9600);
   Serial.println();  
   lcd.begin(16, 2);
-  attachInterrupt(2, keyInterupt, CHANGE);
-  attachInterrupt(3, keyInterupt, CHANGE);
-  attachInterrupt(4, keyInterupt, CHANGE);
+  attachInterrupt(2, keyinterrupt, CHANGE);
+  attachInterrupt(3, keyinterrupt, CHANGE);
+  attachInterrupt(4, keyinterrupt, CHANGE);
 }
 
 void loop() {
 
 }
 
-/*** KEYPAD INTERUPT ***/
+/*** KEYPAD interrupt ***/
 
 int  milliseconds;
 char key;
@@ -55,14 +55,14 @@ int id;
 char str[10];
 int strIndex;
 
-/** keyInterupt
+/** keyInterrupt
  *  If key is '*' resets the state
  *  If key is '#' it checks stock, if in
  *  If in stock another '#' dispenses it
  *  Any number is added to an array for
  *  future use
  */
-void keyInterupt() {
+void keyInterrupt() {
   milliseconds = 0;
   str[0] = 0;
   strIndex = 0;
@@ -76,7 +76,7 @@ void keyInterupt() {
       delay(10);
     }
     
-    if (key == '*') {
+    if (key == '*') { // exit interrupt
       break;
     }
   
@@ -134,49 +134,53 @@ void confirmVend() {
  */
 void serialEvent() {
   serial_stream.skip(); // Skip any whitespace
-  
   if (serial_stream.available()) { // we have something to parse
-    
-    aJsonObject *msg = aJson.parse(&serial_stream);
-    
-    if (!msg) { // Message failed to parse
-      while (Serial.available() > 0) {
-        Serial.read(); // get rid of serial buffer
-      }
-      Serial.println('{"err":"Invalid JSON"}');
-      return;
-    }
-    
-    char *cmd = aJson.getObjectItem(msg, "cmd")->valuestring;
-    int id = aJson.getObjectItem(msg, "id")->valueint;
-    
-    if (!validId(id)) { // Invalid id
-      aJson.addStringToObject(msg, "err", "Id does not exist");
-    }
-    
-    else if (strcmp(cmd, "stock") == 0) { // stock command
-    if (coils[id - 1].isEmpty()) {
-        aJson.addFalseToObject(msg, "res");
-      } else {
-        aJson.addTrueToObject(msg, "res");
-      }
-    }
-    
-    else if (strcmp(cmd, "vend") == 0) { // vend command
-      if (coils[id - 1].vend()) {
-        aJson.addTrueToObject(msg, "res");
-      } else {
-        aJson.addFalseToObject(msg, "res");
-      }
-    }
-    
-    else { // command not recognized
-      aJson.addStringToObject(msg, "err", "Command not recognized");
-    }
-    
-    aJson.print(msg, &serial_stream);
-    Serial.println(); // finish serial write with CRLF
+    parseSerial();
   }
+}
+
+void parseSerial() {
+  aJsonObject *msg = aJson.parse(&serial_stream);
+  aJsonObject *cmd = aJson.getObjectItem(msg, "cmd");
+  aJsonObject *id = aJson.getObjectItem(msg, "id");
+  
+  char *s = cmd->valuestring;
+  int i = id->valueint;
+  
+  if (!msg || !cmd || !id) { // Incomplete or incorrect JSON
+    while (Serial.available() > 0) {
+      Serial.read(); // get rid of serial buffer
+    }
+    Serial.println('{"err":"Invalid JSON"}');
+    return;
+  }
+  
+  if (i && !validId(i)) { // Invalid id
+    aJson.addStringToObject(msg, "err", "Id does not exist");
+  }
+  
+  if (strcmp(s, "stock") == 0 && validId(i) && coils[i - 1].isEmpty()) {
+    aJson.addFalseToObject(msg, "res");
+  }
+  
+  if (strcmp(s, "stock") == 0 && validId(i) && !coils[i - 1].isEmpty()) {
+    aJson.addTrueToObject(msg, "res");
+  }
+  
+  if (strcmp(s, "vend") == 0 && validId(i) && coils[i - 1].isEmpty()) {
+    aJson.addFalseToObject(msg, "res");
+  }
+  
+  if (strcmp(s, "vend") == 0 && validId(i) && !coils[i - 1].isEmpty()) {
+    aJson.addTrueToObject(msg, "res");
+  }
+  
+  if (strcmp(s, "stock") != 0 && strcmp(s, "vend")) {
+    aJson.addStringToObject(msg, "err", "Command not recognized");
+  }
+  
+  aJson.print(msg, &serial_stream);
+  Serial.println(); // finish serial write with CRLF
 }
 
 /*** UTIL ***/
