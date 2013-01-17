@@ -3,6 +3,7 @@
 #include <EEPROM.h>
 #include <LiquidCrystal.h>
 #include <Keypad.h>
+#include <Servo.h>
 #include <String.h>
 
 /* Coil SETUP */
@@ -38,9 +39,9 @@ void setup() {
   Serial.begin(9600);
   Serial.println();  
   lcd.begin(16, 2);
-  attachInterrupt(2, keyinterrupt, CHANGE);
-  attachInterrupt(3, keyinterrupt, CHANGE);
-  attachInterrupt(4, keyinterrupt, CHANGE);
+  attachInterrupt(2, keyInterrupt, CHANGE);
+  attachInterrupt(3, keyInterrupt, CHANGE);
+  attachInterrupt(4, keyInterrupt, CHANGE);
 }
 
 void loop() {
