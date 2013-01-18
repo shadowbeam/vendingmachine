@@ -17,6 +17,10 @@ class VendingMachine(object):
 	def addcredit(self, id=None):
 		return self.arduino('addcredit', id)
 	addcredit.exposed = True
+	
+	def getcredit(self, id=None):
+		return self.arduino('getcredit', id)
+	getcredit.exposed = True
 
 	
 	def arduino(self, cmd, id):
