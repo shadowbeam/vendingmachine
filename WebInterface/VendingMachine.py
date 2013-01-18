@@ -18,6 +18,10 @@ class VendingMachine(object):
 		return self.arduino('addcredit', id)
 	addcredit.exposed = True
 	
+	def getcredit(self, id=None):
+		return self.arduino('getcredit', id)
+	addcredit.exposed = True
+	
 	def arduino(self, cmd, id):
     try:
       request = json.dumps({'cmd':cmd, 'id':int(id)})
