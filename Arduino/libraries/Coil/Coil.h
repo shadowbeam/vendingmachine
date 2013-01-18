@@ -7,17 +7,15 @@
 class Coil
 {
   public:
-	Coil(int trigPin, int echoPin, int motorPin, int price);
-    int getPrice();
+	Coil(int trigPin, int echoPin, int motorPin);
     int getStock();
     boolean isEmpty();
-    boolean vend();
+    void vend();
   private:
     int _trigPin;
     int _echoPin;
     int _motorPin;
     int _getDistance();
-    int _price;    
 };
 
 #endif

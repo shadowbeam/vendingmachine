@@ -8,8 +8,7 @@
 
 /* Coil SETUP */
 Coil coils[] = {
-  Coil(1,2,3,100),
-  Coil(4,5,6,80)
+  Coil(9,8,36),
 };
 
 /* KEYPAD SETUP */
@@ -21,9 +20,9 @@ char keys[ROWS][COLS] = {
   {'7','8','9'},
   {'*','0','#'}
 };
-byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
+byte rowPins[ROWS] = {43, 53, 51, 47}; //connect to the row pinouts of the keypad
 // TODO CHANGE TO 21, 20, 19
-byte colPins[COLS] = {8, 7, 6}; //connect to the column pinouts of the keypad
+byte colPins[COLS] = {45, 41, 49}; //connect to the column pinouts of the keypad
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 /* LCD SETUP */
@@ -45,7 +44,7 @@ void setup() {
 }
 
 void loop() {
-
+  // TODO implement scrolling text
 }
 
 /*** KEYPAD interrupt ***/
@@ -176,7 +175,17 @@ void parseSerial() {
     aJson.addTrueToObject(msg, "res");
   }
   
-  if (strcmp(s, "stock") != 0 && strcmp(s, "vend")) {
+  if (strcmp(s, "addcredit") == 0) {
+    setCredit(getCredit() + 1);
+    aJson.addTrueToObject(msg, "res");
+  }
+  
+  if (strcmp(s, "getcredit") == 0) {
+    // TODO increment credit by one
+    aJson.addNumberToObject(msg, "res", getCredit());
+  }
+  
+  if (strcmp(s, "stock") != 0 && strcmp(s, "vend") && strcmp(s, "addcredit") != 0 && strcmp(s, "getcredit")) {
     aJson.addStringToObject(msg, "err", "Command not recognized");
   }
   
