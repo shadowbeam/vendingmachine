@@ -179,6 +179,10 @@ void parseSerial() {
     setCredit(getCredit() + 1);
     aJson.addTrueToObject(msg, "res");
   }
+
+ if (strcmp(s, "getcredit") == 0) {
+    aJson.addStringToObject(msg, "res", getCredit());
+  }
   
   if (strcmp(s, "getcredit") == 0) {
     // TODO increment credit by one
