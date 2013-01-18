@@ -40,7 +40,7 @@ $('.submit').click(function() {
 	if(displaytext == credit_code){	
 		$.getJSON('addcredit', {id: id}, function(data) {
 			if ('res' in data) {
-				setDisplay(data['res']);	
+				setDisplay("Credits: " + data['res']);	
 			}
 		});
 	}
