@@ -6,9 +6,13 @@
 #include <Servo.h>
 #include <String.h>
 
+/* Credit setup */
+
+#define creditLoc 0
+
 /* Coil SETUP */
 Coil coils[] = {
-  Coil(9,8,36),
+  Coil(9,8,36,1),
 };
 
 /* KEYPAD SETUP */
@@ -30,9 +34,6 @@ LiquidCrystal lcd(22, 24, 26, 28, 30, 32);
 
 /* SERIAL JSON STREAM SETUP */
 aJsonStream serial_stream(&Serial);
-
-/* EEPROM LOCATION SETUP */
-int eepromLoc[] = {0x0A, 0x0B, 0x0C, 0x0D};
 
 void setup() {
   Serial.begin(9600);
@@ -199,24 +200,14 @@ void parseSerial() {
  *  retrieves the stored credit from EEPROM
  */
 int getCredit() {
-  int credit = 0;
-  credit = (credit << 8) + EEPROM.read(eepromLoc[0]);
-  credit = (credit << 8) + EEPROM.read(eepromLoc[1]);
-  credit = (credit << 8) + EEPROM.read(eepromLoc[2]);
-  credit = (credit << 8) + EEPROM.read(eepromLoc[3]);
+  return EEPROM.read(creditLoc);
 }
 
-/** getCredit
+/** setCredit
  *  sets the stored credit in EEPROM
  */
 void setCredit(int credit) {
-  EEPROM.write(eepromLoc[3], credit & 0xFF);
-  credit >>= 8;
-  EEPROM.write(eepromLoc[2], credit & 0xFF);
-  credit >>= 8;
-  EEPROM.write(eepromLoc[1], credit & 0xFF);
-  credit >>= 8;
-  EEPROM.write(eepromLoc[0], credit & 0xFF);
+  EEPROM.write(creditLoc, credit);
 }
 
 /** checkId
