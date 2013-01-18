@@ -3,6 +3,7 @@ var msg_success = "vending product";
 var msg_error = "invalid code";
 var msg_instock = "press # to vend";
 var msg_outofstock = "out of stock";
+var msg_outofstock = "out of credit";
 var msg_thanks = "thank you";
 var credit_code = 99; //number to increase your credit
 var id;
@@ -72,6 +73,7 @@ $('.submit').click(function() {
 			
 			else if ('res' in data) {
 				switch (data['res']) {
+					case -1: setDisplay(msg_outofcredit); break;
 					case 0: setDisplay(msg_outofstock); break;
 					default: 
 						var msg = data['res'] + ' left: ' + msg_instock;
