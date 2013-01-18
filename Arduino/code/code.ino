@@ -35,16 +35,23 @@ LiquidCrystal lcd(22, 24, 26, 28, 30, 32);
 /* SERIAL JSON STREAM SETUP */
 aJsonStream serial_stream(&Serial);
 
+int credit;
+
 void setup() {
   Serial.begin(9600);
-  Serial.println();  
+  Serial.println("START");  
   lcd.begin(16, 2);
-  attachInterrupt(2, keyInterrupt, CHANGE);
+  credit = getCredit();
+/*  attachInterrupt(2, keyInterrupt, CHANGE);
   attachInterrupt(3, keyInterrupt, CHANGE);
-  attachInterrupt(4, keyInterrupt, CHANGE);
+  attachInterrupt(4, keyInterrupt, CHANGE);*/
 }
 
 void loop() {
+  lcdPrintln("Enter code");
+  delay(50);
+  keyInterrupt();
+  
   // TODO implement scrolling text
 }
 
@@ -78,16 +85,38 @@ void keyInterrupt() {
     }
     
     if (key == '*') { // exit interrupt
+      str[0] = 0;
+      break;
+    }
+    
+    if (key == '#' && id == 33) {
+      setStockGetId();
+      break;
+    }
+    
+    if (key == '#' && id == 99) {
+      changeCredit(1);
+      lcdPrintlnAndBlock("Added credit", 4);
       break;
     }
   
-    if (key == '#' && !validId(id)) {
+    if (key == '#' && !validId(id) && id != 33 && id != 99) {
       lcdPrintlnAndBlock("Invalid Id", 4);
       break;
     }
     
     if (key == '#' && validId(id) && coils[id-1].isEmpty()) {
       lcdPrintlnAndBlock("Out of stock", 4);
+      break;
+    }
+    
+    if (key == '#' && !isCredit()) {
+      lcdPrintlnAndBlock("Out of credit", 4);
+      break;
+    }
+    
+    if (key == '#' && validId(id) && !coils[id-1].isEmpty() && !isCredit()) {
+      lcdPrintlnAndBlock("Out of credit", 4);
       break;
     }
     
@@ -114,14 +143,81 @@ void confirmVend() {
   milliseconds = 0;
   
   while ( milliseconds < 4000) {
+    id = atoi(str);
     milliseconds += 10;
     delay(10);
     key = kpd.getKey();
-    if (key && key == '#') {
+    if (key == '#') {
+      lcdPrintln("Vending product");
       coils[id - 1].vend();
-      lcdPrintlnAndBlock("Vending product", 4);
       lcdPrintlnAndBlock("Thank you", 4);
+      changeCredit(-1);
       break;
+    }
+  }
+}
+
+/** setStockGetId
+ *  loops until # is pressed and vend completes or
+ *  four seconds elapse
+ */
+void setStockGetId() {
+  lcdPrintln("Enter id");
+  milliseconds = 0;
+  str[0] = 0;
+  strIndex = 0;
+  
+  while ( milliseconds < 4000) {
+    id = atoi(str);
+    milliseconds += 10;
+    delay(10);
+    key = kpd.getKey();
+    if (key == '#' && validId(id)) {
+      setStockGetQuant(id);
+      break;
+    }
+    
+    if (key == '#' && !validId(id)) {
+      lcdPrintlnAndBlock("Invalid ID", 4);
+      break;
+    }
+    
+    if (isdigit(key)) { // add number to string
+      str[strIndex++] = key;
+      str[strIndex] = 0;
+      lcdPrintln(str);
+      milliseconds= 0;
+    }
+  }
+}
+
+/** setStockGetQuant
+ *  loops until # is pressed and vend completes or
+ *  four seconds elapse
+ */
+void setStockGetQuant(int coilId) {
+  lcdPrintln("Enter quant");
+  milliseconds = 0;
+  str[0] = 0;
+  strIndex = 0;
+  
+  while ( milliseconds < 4000) {
+    id = atoi(str);
+    milliseconds += 10;
+    delay(10);
+    key = kpd.getKey();
+    if (key == '#') {
+      coils[coilId - 1].setStock(id);
+      sprintf(str, "Stock: %2d", id);
+      lcdPrintlnAndBlock(str, 4);
+      break;
+    }
+    
+    if (isdigit(key)) { // add number to string
+      str[strIndex++] = key;
+      str[strIndex] = 0;
+      lcdPrintln(str);
+      milliseconds= 0;
     }
   }
 }
@@ -176,13 +272,12 @@ void parseSerial() {
     aJson.addTrueToObject(msg, "res");
   }
   
-  if (strcmp(s, "addcredit") == 0) {
-    setCredit(getCredit() + 1);
+  if (strcmp(s, "addcredit") == 0 && i > 0) {
+    changeCredit(i);
     aJson.addTrueToObject(msg, "res");
   }
   
   if (strcmp(s, "getcredit") == 0) {
-    // TODO increment credit by one
     aJson.addNumberToObject(msg, "res", getCredit());
   }
   
@@ -194,11 +289,12 @@ void parseSerial() {
   Serial.println(); // finish serial write with CRLF
 }
 
-/*** UTIL ***/
+/*** CREDIT EEPROM FUNCTIONS ***/
 
 /** getCredit
  *  retrieves the stored credit from EEPROM
  */
+ 
 int getCredit() {
   return EEPROM.read(creditLoc);
 }
@@ -209,6 +305,24 @@ int getCredit() {
 void setCredit(int credit) {
   EEPROM.write(creditLoc, credit);
 }
+/*
+/** changeCredit
+ *  adds the specified credit to the stored
+ *  credit in EEPROM
+ */
+void changeCredit(int change) {
+  setCredit(getCredit() + change);
+  credit += change;
+}
+
+/** isCredit
+ *  checks if there is credit in EEPROM
+ */
+boolean isCredit() {
+  return credit > 0;
+}
+
+/*** UTIL ***/
 
 /** checkId
  *  returns true if coil id is valid, false otherwise
@@ -225,6 +339,10 @@ boolean validId(int id) {
  */
 void lcdPrintln(char *s) {
   lcd.clear();
+  lcd.setCursor(0,0);
+  char creditString[10];
+  sprintf(creditString, "Credit: %2d", credit);
+  lcd.write(creditString);
   lcd.setCursor(0,1);
   lcd.write(s);
 }

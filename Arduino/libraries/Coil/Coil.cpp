@@ -4,6 +4,8 @@
 #include <Servo.h>
 
 
+Servo servo;
+
 Coil::Coil(int trigPin, int echoPin, int motorPin, int eepromLoc)
 {
 	pinMode(trigPin, OUTPUT);
@@ -26,15 +28,14 @@ void Coil::setStock(int quant)
 
 boolean Coil::isEmpty()
 {
-	return getStock() == 0;
+	return getStock() < 1;
 }
 
 void Coil::vend()
 {  
-  Servo servo;
   servo.attach(_motorPin);
   servo.write(0);
   delay(1350);
   servo.write(90);
-  delete &servo;
+  setStock(getStock() - 1);
 }
