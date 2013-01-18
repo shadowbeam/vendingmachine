@@ -177,13 +177,13 @@ void parseSerial() {
   }
 
   //not enough credit error
-  if (strcmp(s, "vend") == 0 && validId(i) && !coils[i - 1].isEmpty() && getStock() == 0) {
+  if (strcmp(s, "vend") == 0 && validId(i) && !coils[i - 1].isEmpty() && getCredit() == 0) {
     aJson.addStringToObject(msg, "res", "Not enough credit");
   }
   
   if (strcmp(s, "addcredit") == 0) {
     setCredit(getCredit() + 1);
-    aJson.addTrueToObject(msg, "res");
+    aJson.addTrueToObject(msg, "res", getCredit());
   }
 
   
