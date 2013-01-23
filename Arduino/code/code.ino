@@ -4,7 +4,6 @@
 #include <LiquidCrystal.h>
 #include <Keypad.h>
 #include <Servo.h>
-#include <String.h>
 
 /* Credit setup */
 
@@ -241,48 +240,43 @@ void parseSerial() {
   aJsonObject *cmd = aJson.getObjectItem(msg, "cmd");
   aJsonObject *id = aJson.getObjectItem(msg, "id");
   
-  char *s = cmd->valuestring;
   int i = id->valueint;
   
-  if (!msg || !cmd || !id) { // Incomplete or incorrect JSON
-    while (Serial.available() > 0) {
-      Serial.read(); // get rid of serial buffer
+  if (strcmp(cmd->valuestring, "stock") != 0 && strcmp(cmd->valuestring, "vend") && strcmp(cmd->valuestring, "addcredit") != 0 && strcmp(cmd->valuestring, "getcredit")) {
+    aJson.addStringToObject(msg, "err", "Command not recognized");
+  }
+  
+  else if (validId(i) && (strcmp(cmd->valuestring, "stock") == 0 || strcmp(cmd->valuestring, "vend") == 0)) {
+    if (strcmp(cmd->valuestring, "stock") == 0 && coils[id->valueint - 1].isEmpty()) {
+      aJson.addFalseToObject(msg, "res");
     }
-    Serial.println('{"err":"Invalid JSON"}');
-    return;
+    
+    if (strcmp(cmd->valuestring, "stock") == 0 && !coils[id->valueint - 1].isEmpty()) {
+      aJson.addTrueToObject(msg, "res");
+    }
+    
+    if (strcmp(cmd->valuestring, "vend") == 0 && coils[i - 1].isEmpty()) {
+      aJson.addFalseToObject(msg, "res");
+    }
+    
+    if (strcmp(cmd->valuestring, "vend") == 0 && !coils[i - 1].isEmpty()) {
+      aJson.addTrueToObject(msg, "res");
+      coils[i - 1].vend();
+    }
+  
   }
   
-  if (i && !validId(i)) { // Invalid id
-    aJson.addStringToObject(msg, "err", "Id does not exist");
-  }
-  
-  if (strcmp(s, "stock") == 0 && validId(i) && coils[i - 1].isEmpty()) {
-    aJson.addFalseToObject(msg, "res");
-  }
-  
-  if (strcmp(s, "stock") == 0 && validId(i) && !coils[i - 1].isEmpty()) {
-    aJson.addTrueToObject(msg, "res");
-  }
-  
-  if (strcmp(s, "vend") == 0 && validId(i) && coils[i - 1].isEmpty()) {
-    aJson.addFalseToObject(msg, "res");
-  }
-  
-  if (strcmp(s, "vend") == 0 && validId(i) && !coils[i - 1].isEmpty()) {
-    aJson.addTrueToObject(msg, "res");
-  }
-  
-  if (strcmp(s, "addcredit") == 0 && i > 0) {
+  else if (strcmp(cmd->valuestring, "addcredit") == 0) {
     changeCredit(i);
     aJson.addTrueToObject(msg, "res");
   }
   
-  if (strcmp(s, "getcredit") == 0) {
+  else if (strcmp(cmd->valuestring, "getcredit") == 0) {
     aJson.addNumberToObject(msg, "res", getCredit());
   }
   
-  if (strcmp(s, "stock") != 0 && strcmp(s, "vend") && strcmp(s, "addcredit") != 0 && strcmp(s, "getcredit")) {
-    aJson.addStringToObject(msg, "err", "Command not recognized");
+  else { // Invalid id
+    aJson.addStringToObject(msg, "err", "Id does not exist");
   }
   
   aJson.print(msg, &serial_stream);
