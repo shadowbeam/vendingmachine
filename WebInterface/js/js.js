@@ -37,16 +37,17 @@ $('.submit').click(function() {
 	
 	//if the user wants to increase their credit
 	if(displaytext == credit_code){	
-		$.getJSON('addcredit', {id: id}, function(data) {
+		$.getJSON('addcredit', {id: 1}, function(data) {
 			if ('res' in data) {
-				setDisplay(data['res']);	
+				setDisplay("credit added");
+				setTimeout(function(){setDisplay(msg_welcome)},2000);
 			}
 		});
 	}
 	
 
 	
-	if (displaytext == msg_instock) {
+	else if (displaytext.indexOf(msg_instock) != -1) {
 		$.getJSON('vend', {id: id}, function(data) {
 			if ('err' in data) {
 				setDisplay(data['err']);
@@ -54,7 +55,8 @@ $('.submit').click(function() {
 			
 			else if ('res' in data) {
 				setDisplay(msg_success);
-				setTimeout(function(){setDisplay(msg_thanks)},3000);	
+				setTimeout(function(){setDisplay(msg_thanks)},3000);
+				setTimeout(function(){setDisplay(msg_welcome)},6000);	
 			}
 		});	
 	}
@@ -71,12 +73,12 @@ $('.submit').click(function() {
 			}
 			
 			else if ('res' in data) {
-				switch (data['res']) {
-					case 0: setDisplay(msg_outofstock); break;
-					default: 
-						var msg = data['res'] + ' left: ' + msg_instock;
-						setDisplay(msg);
-				}	
+				if (data['res']) {
+					setDisplay(msg_instock);				
+				}
+				else{
+					setDisplay(msg_outofstock);
+				}
 			}
 		});			
 	}

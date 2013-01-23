@@ -260,7 +260,7 @@ margin-right: auto;
 	}
 	
 	#display{
-	overflow: scroll;
+	//overflow: scroll;
 		max-height: 3em;
 		height: 1em;
 		text-align: left;
