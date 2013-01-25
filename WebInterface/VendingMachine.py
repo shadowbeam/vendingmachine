@@ -43,5 +43,9 @@ cherrypy.tree.mount(VendingMachine(), '/', config={
 	},
 })
 
+cherrypy.server.socket_host = '0.0.0.0'
+if 'geteuid' not in dir(os) or os.geteuid() == 1:
+  cherrypy.server.socket_port = 80
+
 cherrypy.engine.start()
 cherrypy.engine.block()
