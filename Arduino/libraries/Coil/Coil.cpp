@@ -1,46 +1,41 @@
 #include <Arduino.h>
 #include <Coil.h>
+#include <EEPROM.h>
 #include <Servo.h>
 
 
-Coil::Coil(int trigPin, int echoPin, int motorPin)
+Servo servo;
+
+Coil::Coil(int trigPin, int echoPin, int motorPin, int eepromLoc)
 {
 	pinMode(trigPin, OUTPUT);
 	pinMode(echoPin, INPUT); 
 	_trigPin = trigPin;
 	_echoPin = echoPin;
 	_motorPin = motorPin;
+  _eepromLoc = eepromLoc;
 }
 
 int Coil::getStock()
 {
-	int cm = _getDistance();
-	return 5 - (cm / 2);
+	return EEPROM.read(_eepromLoc);
+}
+
+void Coil::setStock(int quant)
+{
+	EEPROM.write(_eepromLoc, quant);
 }
 
 boolean Coil::isEmpty()
 {
-	return getStock() == 0;
+	return getStock() < 1;
 }
 
 void Coil::vend()
 {  
-  Servo servo;
   servo.attach(_motorPin);
   servo.write(0);
   delay(1350);
   servo.write(90);
-  delete &servo;
-}
-
-int Coil::_getDistance()
-{
-  long duration;
-	digitalWrite(_trigPin, LOW);
-	delayMicroseconds(2);
-	digitalWrite(_trigPin, HIGH);
-	delayMicroseconds(5);
-	digitalWrite(_trigPin, LOW);
-	duration = pulseIn(_echoPin, HIGH);
-	return duration / 2 / 29.39;
+  setStock(getStock() - 1);
 }

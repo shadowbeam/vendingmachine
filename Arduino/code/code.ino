@@ -4,11 +4,14 @@
 #include <LiquidCrystal.h>
 #include <Keypad.h>
 #include <Servo.h>
-#include <String.h>
+
+/* Credit setup */
+
+#define creditLoc 0
 
 /* Coil SETUP */
 Coil coils[] = {
-  Coil(9,8,36),
+  Coil(9,8,36,1),
 };
 
 /* KEYPAD SETUP */
@@ -31,19 +34,23 @@ LiquidCrystal lcd(22, 24, 26, 28, 30, 32);
 /* SERIAL JSON STREAM SETUP */
 aJsonStream serial_stream(&Serial);
 
-/* EEPROM LOCATION SETUP */
-int eepromLoc[] = {0x0A, 0x0B, 0x0C, 0x0D};
+int credit;
 
 void setup() {
   Serial.begin(9600);
-  Serial.println();  
+  Serial.println("START");  
   lcd.begin(16, 2);
-  attachInterrupt(2, keyInterrupt, CHANGE);
+  credit = getCredit();
+/*  attachInterrupt(2, keyInterrupt, CHANGE);
   attachInterrupt(3, keyInterrupt, CHANGE);
-  attachInterrupt(4, keyInterrupt, CHANGE);
+  attachInterrupt(4, keyInterrupt, CHANGE);*/
 }
 
 void loop() {
+  lcdPrintln("Enter code");
+  delay(50);
+  keyInterrupt();
+  
   // TODO implement scrolling text
 }
 
@@ -77,16 +84,38 @@ void keyInterrupt() {
     }
     
     if (key == '*') { // exit interrupt
+      str[0] = 0;
+      break;
+    }
+    
+    if (key == '#' && id == 33) {
+      setStockGetId();
+      break;
+    }
+    
+    if (key == '#' && id == 99) {
+      changeCredit(1);
+      lcdPrintlnAndBlock("Added credit", 4);
       break;
     }
   
-    if (key == '#' && !validId(id)) {
+    if (key == '#' && !validId(id) && id != 33 && id != 99) {
       lcdPrintlnAndBlock("Invalid Id", 4);
       break;
     }
     
     if (key == '#' && validId(id) && coils[id-1].isEmpty()) {
       lcdPrintlnAndBlock("Out of stock", 4);
+      break;
+    }
+    
+    if (key == '#' && !isCredit()) {
+      lcdPrintlnAndBlock("Out of credit", 4);
+      break;
+    }
+    
+    if (key == '#' && validId(id) && !coils[id-1].isEmpty() && !isCredit()) {
+      lcdPrintlnAndBlock("Out of credit", 4);
       break;
     }
     
@@ -113,14 +142,81 @@ void confirmVend() {
   milliseconds = 0;
   
   while ( milliseconds < 4000) {
+    id = atoi(str);
     milliseconds += 10;
     delay(10);
     key = kpd.getKey();
-    if (key && key == '#') {
+    if (key == '#') {
+      lcdPrintln("Vending product");
       coils[id - 1].vend();
-      lcdPrintlnAndBlock("Vending product", 4);
       lcdPrintlnAndBlock("Thank you", 4);
+      changeCredit(-1);
       break;
+    }
+  }
+}
+
+/** setStockGetId
+ *  loops until # is pressed and vend completes or
+ *  four seconds elapse
+ */
+void setStockGetId() {
+  lcdPrintln("Enter id");
+  milliseconds = 0;
+  str[0] = 0;
+  strIndex = 0;
+  
+  while ( milliseconds < 4000) {
+    id = atoi(str);
+    milliseconds += 10;
+    delay(10);
+    key = kpd.getKey();
+    if (key == '#' && validId(id)) {
+      setStockGetQuant(id);
+      break;
+    }
+    
+    if (key == '#' && !validId(id)) {
+      lcdPrintlnAndBlock("Invalid ID", 4);
+      break;
+    }
+    
+    if (isdigit(key)) { // add number to string
+      str[strIndex++] = key;
+      str[strIndex] = 0;
+      lcdPrintln(str);
+      milliseconds= 0;
+    }
+  }
+}
+
+/** setStockGetQuant
+ *  loops until # is pressed and vend completes or
+ *  four seconds elapse
+ */
+void setStockGetQuant(int coilId) {
+  lcdPrintln("Enter quant");
+  milliseconds = 0;
+  str[0] = 0;
+  strIndex = 0;
+  
+  while ( milliseconds < 4000) {
+    id = atoi(str);
+    milliseconds += 10;
+    delay(10);
+    key = kpd.getKey();
+    if (key == '#') {
+      coils[coilId - 1].setStock(id);
+      sprintf(str, "Stock: %2d", id);
+      lcdPrintlnAndBlock(str, 4);
+      break;
+    }
+    
+    if (isdigit(key)) { // add number to string
+      str[strIndex++] = key;
+      str[strIndex] = 0;
+      lcdPrintln(str);
+      milliseconds= 0;
     }
   }
 }
@@ -144,86 +240,83 @@ void parseSerial() {
   aJsonObject *cmd = aJson.getObjectItem(msg, "cmd");
   aJsonObject *id = aJson.getObjectItem(msg, "id");
   
-  char *s = cmd->valuestring;
   int i = id->valueint;
   
-  if (!msg || !cmd || !id) { // Incomplete or incorrect JSON
-    while (Serial.available() > 0) {
-      Serial.read(); // get rid of serial buffer
+  if (strcmp(cmd->valuestring, "stock") != 0 && strcmp(cmd->valuestring, "vend") && strcmp(cmd->valuestring, "addcredit") != 0 && strcmp(cmd->valuestring, "getcredit")) {
+    aJson.addStringToObject(msg, "err", "Command not recognized");
+  }
+  
+  else if (validId(i) && (strcmp(cmd->valuestring, "stock") == 0 || strcmp(cmd->valuestring, "vend") == 0)) {
+    if (strcmp(cmd->valuestring, "stock") == 0 && coils[id->valueint - 1].isEmpty()) {
+      aJson.addFalseToObject(msg, "res");
     }
-    Serial.println('{"err":"Invalid JSON"}');
-    return;
+    
+    if (strcmp(cmd->valuestring, "stock") == 0 && !coils[id->valueint - 1].isEmpty()) {
+      aJson.addTrueToObject(msg, "res");
+    }
+    
+    if (strcmp(cmd->valuestring, "vend") == 0 && coils[i - 1].isEmpty()) {
+      aJson.addFalseToObject(msg, "res");
+    }
+    
+    if (strcmp(cmd->valuestring, "vend") == 0 && !coils[i - 1].isEmpty()) {
+      aJson.addTrueToObject(msg, "res");
+      coils[i - 1].vend();
+    }
+  
   }
   
-  if (i && !validId(i)) { // Invalid id
-    aJson.addStringToObject(msg, "err", "Id does not exist");
-  }
-  
-  if (strcmp(s, "stock") == 0 && validId(i) && coils[i - 1].isEmpty()) {
-    aJson.addFalseToObject(msg, "res");
-  }
-  
-  if (strcmp(s, "stock") == 0 && validId(i) && !coils[i - 1].isEmpty()) {
+  else if (strcmp(cmd->valuestring, "addcredit") == 0) {
+    changeCredit(i);
     aJson.addTrueToObject(msg, "res");
   }
   
-  if (strcmp(s, "vend") == 0 && validId(i) && coils[i - 1].isEmpty()) {
-    aJson.addFalseToObject(msg, "res");
-  }
-
-  
-  if (strcmp(s, "vend") == 0 && validId(i) && !coils[i - 1].isEmpty()) {
-    aJson.addTrueToObject(msg, "res");
-  }
-
-  //not enough credit error
-  if (strcmp(s, "vend") == 0 && validId(i) && !coils[i - 1].isEmpty() && getCredit() == 0) {
-    aJson.addStringToObject(msg, "res", "Not enough credit");
-  }
-  
-  if (strcmp(s, "addcredit") == 0) {
-    setCredit(getCredit() + 1);
-    aJson.addTrueToObject(msg, "res", getCredit());
-  }
-
-  
-  if (strcmp(s, "getcredit") == 0) {
+  else if (strcmp(cmd->valuestring, "getcredit") == 0) {
     aJson.addNumberToObject(msg, "res", getCredit());
   }
   
-  if (strcmp(s, "stock") != 0 && strcmp(s, "vend") && strcmp(s, "addcredit") != 0 && strcmp(s, "getcredit")) {
-    aJson.addStringToObject(msg, "err", "Command not recognized");
+  else { // Invalid id
+    aJson.addStringToObject(msg, "err", "Id does not exist");
   }
   
   aJson.print(msg, &serial_stream);
   Serial.println(); // finish serial write with CRLF
 }
 
-/*** UTIL ***/
+/*** CREDIT EEPROM FUNCTIONS ***/
 
 /** getCredit
  *  retrieves the stored credit from EEPROM
  */
+ 
 int getCredit() {
-  int credit = 0;
-  credit = (credit << 8) + EEPROM.read(eepromLoc[0]);
-  credit = (credit << 8) + EEPROM.read(eepromLoc[1]);
-  credit = (credit << 8) + EEPROM.read(eepromLoc[2]);
-  credit = (credit << 8) + EEPROM.read(eepromLoc[3]);
+  return EEPROM.read(creditLoc);
 }
 
-/** getCredit
+/** setCredit
  *  sets the stored credit in EEPROM
  */
 void setCredit(int credit) {
-  EEPROM.write(eepromLoc[3], credit & 0xFF);
-  credit >>= 8;
-  EEPROM.write(eepromLoc[2], credit & 0xFF);
-  credit >>= 8;
-  EEPROM.write(eepromLoc[1], credit & 0xFF);
-  credit >>= 8;
-  EEPROM.write(eepromLoc[0], credit & 0xFF);
+  EEPROM.write(creditLoc, credit);
 }
+/*
+/** changeCredit
+ *  adds the specified credit to the stored
+ *  credit in EEPROM
+ */
+void changeCredit(int change) {
+  setCredit(getCredit() + change);
+  credit += change;
+}
+
+/** isCredit
+ *  checks if there is credit in EEPROM
+ */
+boolean isCredit() {
+  return credit > 0;
+}
+
+/*** UTIL ***/
 
 /** checkId
  *  returns true if coil id is valid, false otherwise
@@ -240,6 +333,10 @@ boolean validId(int id) {
  */
 void lcdPrintln(char *s) {
   lcd.clear();
+  lcd.setCursor(0,0);
+  char creditString[10];
+  sprintf(creditString, "Credit: %2d", credit);
+  lcd.write(creditString);
   lcd.setCursor(0,1);
   lcd.write(s);
 }
@@ -252,4 +349,3 @@ void lcdPrintlnAndBlock(char *str, int secs) {
   lcdPrintln(str);
   delay(1000 * secs);
 }
-
