@@ -1,7 +1,0 @@
-#!/bin/bash
-
-echo 'Logging into CIS wireless proxy'
-curl -F action=login -F username=DSusername -F password=DSpassword > /dev/null
-
-echo 'Starting CherryPy'
-~pi/vendingmachine/WebInterface/VendingMachine.py &
